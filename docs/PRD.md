@@ -176,11 +176,11 @@ Base path: **`/admin`**. All admin endpoints require **ROUTER_ADMIN_KEY**: `Auth
 | Method | Path | Purpose | Request / Response (summary) |
 |--------|------|---------|-----------------------------|
 | **GET** | `/admin/status` | Router status and health | **Response:** `{ "status": "ok"|"degraded", "version", "current_provider"?, "providers_healthy": { "<id>": true|false }, "uptime_seconds"?, ... }`. Used by CLI/SMCP `get_router_status()`. |
-| **GET** | `/admin/providers` | List providers and capabilities | **Response:** `{ "providers": [ { "id", "endpoint", "models": [...], "priority", "healthy", "supports_tools", "supports_streaming", "supports_multimodal", "credit_threshold"?, ... } ] }`. Used by `list_providers()`. |
-| **POST** | `/admin/providers` | Add provider | **Request:** `{ "id", "endpoint", "api_key"?, "models": [...], "priority", "credit_threshold"?, "supports_tools", "supports_streaming", "supports_multimodal", ... }`. Credentials stored encrypted in DB. **Response:** `{ "ok": true, "provider": { ... } }`. |
+| **GET** | `/admin/providers` | List providers and capabilities | **Response:** `{ "providers": [ { "id", "endpoint", "provider_type"?, "models": [...], "priority", "healthy", "supports_tools", "supports_streaming", "supports_multimodal", "credit_threshold"?, ... } ] }`. Used by `list_providers()`. |
+| **POST** | `/admin/providers` | Add provider | **Request:** `{ "id", "endpoint", "provider_type"?, "api_key"?, "models": [...], "priority", "credit_threshold"?, "supports_tools", "supports_streaming", "supports_multimodal", ... }`. Credentials stored encrypted in DB. **Response:** `{ "ok": true, "provider": { ... } }`. |
 | **DELETE** | `/admin/providers/{id}` | Remove provider | **Response:** `{ "ok": true }`. |
-| **PATCH** | `/admin/providers/{id}` | Update provider (endpoint, models, priority, capabilities, etc.) | **Request:** Partial provider object (e.g. `supports_tools`, `supports_streaming`, `supports_multimodal`). **Response:** `{ "ok": true, "provider": { ... } }`. |
-| **GET** | `/admin/credit` | Per-provider credit/balance | **Response:** `{ "providers": [ { "id", "balance"?, "currency"?, "below_threshold": bool } ] }`. Used by `get_credit_status()`. |
+| **PATCH** | `/admin/providers/{id}` | Update provider (endpoint, provider_type, models, priority, capabilities, etc.) | **Request:** Partial provider object (e.g. `provider_type`, `supports_tools`, `supports_streaming`, `supports_multimodal`). **Response:** `{ "ok": true, "provider": { ... } }`. |
+| **GET** | `/admin/credit` | Per-provider credit/balance | **Response:** `{ "providers": [ { "id", "balance"?, "currency"?, "below_threshold": bool, "as_of"?, "error"? } ] }`. Used by `get_credit_status()`. Optional `error` (e.g. `"timeout"`, `"http_403"`, `"parse_error"`) for ops debugging; see PRD_PROVIDER_MONITOR_ADAPTERS.md. |
 | **POST** | `/admin/override` | Agent/session override: pin provider | **Request:** `{ "provider_id": "<id>" }` or `{ "provider_id": null }` to clear. **Response:** `{ "ok": true, "current_provider": "<id>" }`. Persisted in DB (e.g. by session/client id). Used by `select_provider()`. |
 | **POST** | `/admin/estimate-cost` | Estimate cost for model + tokens | **Request:** `{ "model": "<id>", "prompt_tokens": n, "completion_tokens": n? }`. **Response:** `{ "estimated_cost"?, "currency"?, "model", "tokens" }`. Used by `estimate_cost()`. |
 | **GET** | `/admin/routing-config` | Get routing config (priority, failover) | **Response:** `{ "strategy": "priority"|"rule", "provider_order": [ "<id>", ... ], "failover": [ { "provider_id", "condition": "credit_threshold"|"health", "value"?: ... } ], ... }`. Used by `get_routing_config()`. |
@@ -202,6 +202,7 @@ CREATE TABLE providers (
   id TEXT PRIMARY KEY,              -- e.g. 'venice', 'featherless'
   endpoint TEXT NOT NULL,
   api_key_encrypted BLOB,            -- encrypted with key from env; NULL if no key
+  provider_type TEXT,                -- e.g. 'venice', 'openai_compat'; selects monitor adapter (see PRD_PROVIDER_MONITOR_ADAPTERS.md). Default openai_compat.
   models TEXT NOT NULL,             -- JSON array of enabled model names (upstream IDs)
   priority INTEGER NOT NULL,
   credit_threshold REAL,
@@ -268,7 +269,7 @@ CREATE TABLE agent_override (
 - **API Server (FastAPI), two surfaces on the same process:**
   - **Proxy API:** `/v1/*` — OpenAI-compatible (models, chat/completions, embeddings). Auth: **ROUTER_CLIENT_KEY** (Bearer).
   - **Config API:** `/admin/*` — routing config, provider add/list/remove/update, credit, overrides. Auth: **ROUTER_ADMIN_KEY** (Bearer or X-API-Key). **Ideally bindable to localhost-only.** CLI and SMCP plugins (outside container) call this over HTTP. Default router port is **configurable and non-standard** (e.g. 8480) to avoid self-loop; Docker maps it to host.
-- Routing Engine, Provider Adapters (with capability flags), Credit Monitor, Analytics
+- Routing Engine, Provider Adapters (with capability flags), Credit Monitor (see **[Provider Monitor Adapters PRD](PRD_PROVIDER_MONITOR_ADAPTERS.md)** for credit/rate-limit/health adapter design), Analytics
 - **SMCP/UCW:** Ship SMCP plugins; CLI and plugins call Config API. CLI wrapable via UCW for SMCP plugin generation.
 - **Local SQLite DB:** provider definitions (credentials encrypted at rest), routing config, failover conditions, agent overrides. No request logging to DB. No plaintext secrets in DB. **Path:** e.g. `/data/router.db`; **must mount `/data`** (or configured data dir) as a persistent Docker volume so state survives container restarts.
 - Healthcheck endpoint for Docker orchestration
