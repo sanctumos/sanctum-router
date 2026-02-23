@@ -43,3 +43,18 @@ def test_encrypt_no_key_returns_none():
     finally:
         if prev is not None:
             os.environ["ROUTER_ENCRYPTION_KEY"] = prev
+
+
+def test_encryption_available():
+    """encryption_available returns True when key set and long enough, False otherwise."""
+    prev = os.environ.pop("ROUTER_ENCRYPTION_KEY", None)
+    try:
+        os.environ.pop("ROUTER_ENCRYPTION_KEY", None)
+        assert crypto_utils.encryption_available() is False
+        os.environ["ROUTER_ENCRYPTION_KEY"] = "short"
+        assert crypto_utils.encryption_available() is False
+        os.environ["ROUTER_ENCRYPTION_KEY"] = "test-encryption-key-16b"
+        assert crypto_utils.encryption_available() is True
+    finally:
+        if prev is not None:
+            os.environ["ROUTER_ENCRYPTION_KEY"] = prev

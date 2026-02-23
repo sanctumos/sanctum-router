@@ -6,6 +6,7 @@ Authentication and session correlation. PRD § Config API, §6 Config API.
 """
 
 import hashlib
+import hmac
 import os
 from typing import Optional
 
@@ -45,7 +46,7 @@ async def require_client_key(
     token = None
     if credentials:
         token = credentials.credentials
-    if token != CLIENT_KEY:
+    if not hmac.compare_digest((token or "").encode("utf-8"), CLIENT_KEY.encode("utf-8")):
         raise HTTPException(status_code=401, detail=_openai_error_401())
     return token
 
@@ -63,9 +64,9 @@ async def require_admin_key(
     token = None
     if credentials:
         token = credentials.credentials
-    if api_key and api_key == ADMIN_KEY:
+    if api_key and hmac.compare_digest(api_key.encode("utf-8"), ADMIN_KEY.encode("utf-8")):
         token = api_key
-    if token != ADMIN_KEY:
+    if not hmac.compare_digest((token or "").encode("utf-8"), ADMIN_KEY.encode("utf-8")):
         raise HTTPException(status_code=401, detail=_openai_error_401())
     return token
 

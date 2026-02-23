@@ -60,6 +60,24 @@ def test_admin_status(client, admin_headers):
     assert "uptime_seconds" in data
 
 
+def test_admin_create_provider_requires_encryption_key(client, admin_headers):
+    """POST /admin/providers with api_key when encryption unavailable returns 400 (Issue #2)."""
+    with patch("router.admin.encryption_available", return_value=False):
+        r = client.post(
+            "/admin/providers",
+            headers=admin_headers,
+            json={
+                "id": "need-encryption",
+                "endpoint": "https://api.example.com",
+                "models": ["gpt-4"],
+                "priority": 1,
+                "api_key": "secret",
+            },
+        )
+    assert r.status_code == 400
+    assert "ROUTER_ENCRYPTION_KEY" in r.json().get("detail", "")
+
+
 def test_admin_providers_crud(client, admin_headers):
     """POST /admin/providers, GET list, PATCH, DELETE."""
     r = client.post(

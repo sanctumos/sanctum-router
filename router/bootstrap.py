@@ -7,7 +7,7 @@ import json
 import os
 from typing import Any
 
-from router.crypto_utils import encrypt_api_key
+from router.crypto_utils import encrypt_api_key, encryption_available
 from router import db
 
 
@@ -35,6 +35,11 @@ def bootstrap_from_config(config: dict[str, Any]) -> bool:
         if isinstance(api_key, str) and api_key.startswith("${") and api_key.endswith("}"):
             key = api_key[2:-1].strip()
             api_key = os.environ.get(key, "")
+        if api_key and not encryption_available():
+            raise RuntimeError(
+                "ROUTER_ENCRYPTION_KEY is required to store provider API keys in bootstrap. "
+                "Set it (min 16 characters) before starting the router."
+            )
         encrypted = encrypt_api_key(api_key) if api_key else None
         models = p.get("models", [])
         models_str = models if isinstance(models, str) else json.dumps(models)

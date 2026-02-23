@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from router import __version__, db
 from router.auth import get_session_id, require_admin_key
-from router.crypto_utils import encrypt_api_key
+from router.crypto_utils import encrypt_api_key, encryption_available
 from router.credit_health import get_all_credit_state, get_all_health
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin_key)])
@@ -78,6 +78,11 @@ class ProviderCreate(BaseModel):
 async def create_provider(p: ProviderCreate):
     """POST /admin/providers — allowed fields include supports_multimodal; encrypt api_key. Returns { ok, provider } per PRD."""
     models_str = p.models if isinstance(p.models, str) else json.dumps(p.models)
+    if p.api_key and not encryption_available():
+        raise HTTPException(
+            status_code=400,
+            detail="ROUTER_ENCRYPTION_KEY is required to store provider API keys. Set it (min 16 characters) and retry.",
+        )
     enc = encrypt_api_key(p.api_key) if p.api_key else None
     db.provider_insert(
         id=p.id,
@@ -138,6 +143,11 @@ async def update_provider(provider_id: str, p: ProviderPatch):
     if p.supports_multimodal is not None:
         kwargs["supports_multimodal"] = 1 if p.supports_multimodal else 0
     if p.api_key is not None:
+        if p.api_key and not encryption_available():
+            raise HTTPException(
+                status_code=400,
+                detail="ROUTER_ENCRYPTION_KEY is required to store provider API keys. Set it (min 16 characters) and retry.",
+            )
         kwargs["api_key_encrypted"] = encrypt_api_key(p.api_key)
     if kwargs:
         db.provider_update(provider_id, **kwargs)
