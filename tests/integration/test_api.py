@@ -134,6 +134,22 @@ def test_admin_estimate_cost(client, admin_headers):
     assert data["tokens"] == 15
 
 
+def test_admin_estimate_cost_rejects_negative_tokens(client, admin_headers):
+    """POST /admin/estimate-cost returns 400 when tokens are negative (Issue #14)."""
+    r = client.post(
+        "/admin/estimate-cost",
+        headers=admin_headers,
+        json={"prompt_tokens": -1, "completion_tokens": 0},
+    )
+    assert r.status_code == 400
+    r2 = client.post(
+        "/admin/estimate-cost",
+        headers=admin_headers,
+        json={"prompt_tokens": 0, "completion_tokens": -5},
+    )
+    assert r2.status_code == 400
+
+
 def test_admin_credit(client, admin_headers):
     """GET /admin/credit returns dict of provider credit state."""
     r = client.get("/admin/credit", headers=admin_headers)

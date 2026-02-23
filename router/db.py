@@ -184,6 +184,7 @@ def provider_update(
     supports_multimodal: Optional[int] = None,
     healthy: Optional[int] = None,
 ) -> None:
+    """Update only the provided columns. Column set is explicit (this signature); do not build column names from user input."""
     updates = ["updated_at = datetime('now')"]
     args: list[Any] = []
     if endpoint is not None:
