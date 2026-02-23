@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sanctum-router"
-version = "0.1.0"
+version = "0.1.1"
 description = "Self-hosted OpenAI-compatible inference proxy with multi-provider routing"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,7 +18,24 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio"]
+dev = ["pytest", "pytest-asyncio", "pytest-cov", "httpx"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-v --tb=short"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["router", "plugins"]
+branch = true
+omit = ["*/__main__.py", "*/tests/*", "router/cli.py", "plugins/sanctum_router/cli.py"]
+
+[tool.coverage.report]
+fail_under = 70
+show_missing = true
+exclude_lines = ["pragma: no cover", "def __repr__", "raise NotImplementedError"]
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -71,10 +71,15 @@ class OpenAICompatibleAdapter(AdapterInterface):
                             except Exception:
                                 err_body = body_bytes.decode("utf-8", errors="replace")
                             return _normalize_error(status, err_body), status, out_headers
-                        # Stream chunks to caller
+                        # Consume stream while response is still open to avoid closing before
+                        # proxy consumes it (Issue #1). Buffer chunks then yield from buffer.
+                        chunks: list[bytes] = []
+                        async for chunk in resp.aiter_bytes():
+                            chunks.append(chunk)
+
                         async def iter_chunks() -> AsyncIterator[bytes]:
-                            async for chunk in resp.aiter_bytes():
-                                yield chunk
+                            for c in chunks:
+                                yield c
                         return iter_chunks(), status, out_headers
                 else:
                     resp = await client.post(

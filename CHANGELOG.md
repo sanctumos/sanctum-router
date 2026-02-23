@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (See open issues on the repo for audit and hardening items.)
 
+## [0.1.1] - 2026-02-23
+
+### Fixed
+
+- **Streaming response lifecycle (Issue #1):** In streaming chat completions, the adapter no longer returns a generator that captured the HTTP response from inside an `async with` block. The stream is now fully consumed while the response is open and then yielded from a buffer, so the proxy can safely iterate without the stream being closed prematurely.
+
+### Added
+
+- Test suite: unit, integration, and e2e tests with ≥70% coverage (pytest, pytest-cov). Health route registered inside `create_app()` for testability.
+
 ## [0.1.0] - 2025-02-22
 
 Initial Phase 1 release: OpenAI-compatible proxy with multi-provider routing, Config API, CLI, and SMCP plugin.
@@ -39,5 +49,6 @@ Initial Phase 1 release: OpenAI-compatible proxy with multi-provider routing, Co
 
 - Bind to 127.0.0.1 by default. Config API and SMCP plugin have write/admin access—use only in trusted environments. Provider API keys stored encrypted in DB; require `ROUTER_ENCRYPTION_KEY` when using API keys.
 
-[Unreleased]: https://github.com/sanctumos/sanctum-router/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/sanctumos/sanctum-router/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/sanctumos/sanctum-router/releases/tag/v0.1.1
 [0.1.0]: https://github.com/sanctumos/sanctum-router/releases/tag/v0.1.0
