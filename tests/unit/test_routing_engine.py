@@ -34,21 +34,21 @@ def two_providers(clean_db_path):
 
 
 def test_resolve_canonical_model_passthrough(clean_db_path):
-    """_resolve_canonical_model returns request_model when no alias."""
-    assert re._resolve_canonical_model("gpt-4") == "gpt-4"
-    assert re._resolve_canonical_model("openai+gpt-4") == "openai+gpt-4"
+    """resolve_canonical_model returns request_model when no alias."""
+    assert re.resolve_canonical_model("gpt-4") == "gpt-4"
+    assert re.resolve_canonical_model("openai+gpt-4") == "openai+gpt-4"
 
 
 def test_resolve_canonical_model_alias(clean_db_path):
-    """_resolve_canonical_model resolves alias from DB."""
+    """resolve_canonical_model resolves alias from DB."""
     db.model_aliases_set("gpt", "openai+gpt-4")
-    assert re._resolve_canonical_model("gpt") == "openai+gpt-4"
+    assert re.resolve_canonical_model("gpt") == "openai+gpt-4"
 
 
 def test_upstream_model_part():
-    """_upstream_model_part returns model part after + or full id."""
-    assert re._upstream_model_part("openai+gpt-4") == "gpt-4"
-    assert re._upstream_model_part("gpt-4") == "gpt-4"
+    """upstream_model_part returns model part after + or full id."""
+    assert re.upstream_model_part("openai+gpt-4") == "gpt-4"
+    assert re.upstream_model_part("gpt-4") == "gpt-4"
 
 
 def test_filter_by_capability():

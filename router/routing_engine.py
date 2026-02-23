@@ -1,6 +1,9 @@
 """
 Routing engine: provider order, capability gating, override, failover, model ID resolution.
 Plan 4.1–4.6. No request/usage logging to DB.
+
+Failover: failover_conditions in DB are persisted for API consistency and future use (e.g. Phase 2).
+This engine currently uses only in-memory health and providers.credit_threshold for failover.
 """
 
 import json
@@ -37,19 +40,19 @@ def _is_multimodal_request(body: dict[str, Any]) -> bool:
     return False
 
 
-def _resolve_canonical_model(request_model: str) -> str:
-    """Resolve alias to canonical id; otherwise return as-is."""
+def resolve_canonical_model(request_model: str) -> str:
+    """Public API: resolve alias to canonical id; otherwise return as-is."""
     return db.model_aliases_resolve(request_model) or request_model
 
 
-def _upstream_model_part(canonical_id: str) -> str:
-    """If canonical is provider+model return model part; else return canonical_id."""
+def upstream_model_part(canonical_id: str) -> str:
+    """Public API: if canonical is provider+model return model part; else return canonical_id."""
     if "+" in canonical_id:
         return canonical_id.split("+", 1)[1]
     return canonical_id
 
 
-def _providers_with_model(providers: list[dict], upstream_model: str) -> list[dict]:
+def _providers_with_model(providers: list[dict[str, Any]], upstream_model: str) -> list[dict[str, Any]]:
     """Filter to providers that list this upstream model (in their models JSON array)."""
     out = []
     for p in providers:
@@ -108,8 +111,8 @@ def resolve_candidates(
     Return (ordered_candidates, chosen_provider_id, canonical_model_id).
     chosen_provider_id may be None if no candidate; canonical_model_id is for response model echo.
     """
-    canonical = _resolve_canonical_model(request_model)
-    upstream_model = _upstream_model_part(canonical)
+    canonical = resolve_canonical_model(request_model)
+    upstream_model = upstream_model_part(canonical)
 
     ordered = _provider_order()
     with_model = _providers_with_model(ordered, upstream_model)
@@ -122,6 +125,7 @@ def resolve_candidates(
     capable = filter_by_capability(with_model, has_tools=has_tools, stream=stream, multimodal=multimodal)
     available = filter_available(capable)
 
+    # Override is honored only when the provider is in the available set.
     override_provider_id = db.agent_override_get(session_id)
     if override_provider_id:
         for p in available:

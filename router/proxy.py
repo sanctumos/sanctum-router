@@ -14,9 +14,9 @@ from router import db
 from router.routing_engine import (
     resolve_candidates,
     mark_provider_unhealthy,
-    _upstream_model_part,
+    upstream_model_part,
+    resolve_canonical_model,
 )
-from router.routing_engine import _resolve_canonical_model
 
 router = APIRouter(prefix="/v1", tags=["proxy"], dependencies=[Depends(require_client_key)])
 
@@ -60,20 +60,24 @@ def _get_provider(provider_id: str) -> dict | None:
     return db.provider_get(provider_id)
 
 
-async def _try_chat_completions(
-    body: dict, session_id: str, canonical_model: str
+async def _try_candidates(
+    body: dict,
+    session_id: str,
+    canonical_model: str,
+    no_provider_code: str,
+    adapter_call: Any,
 ) -> tuple[Any, int, dict[str, str], str | None]:
-    """Try candidates in order; return (body_or_stream, status, headers, chosen_provider_id)."""
+    """Generic try-candidates loop. adapter_call(pid, endpoint, api_key, upstream_model, body, **kwargs) -> (body, status, headers)."""
     candidates, chosen_id, canonical = resolve_candidates(session_id, body.get("model", ""), body)
     if not chosen_id or not candidates:
+        msg = "No available provider for this request" if no_provider_code == "no_provider" else "No available provider"
         return (
-            {"error": {"message": "No available provider for this request", "type": "api_error", "code": "no_provider"}},
+            {"error": {"message": msg, "type": "api_error", "code": no_provider_code}},
             503,
             {},
             None,
         )
-    stream = body.get("stream", False)
-    upstream_model = _upstream_model_part(canonical)
+    upstream_model = upstream_model_part(canonical)
     last_error = None
     last_status = 503
     for p in candidates:
@@ -81,12 +85,9 @@ async def _try_chat_completions(
         provider = _get_provider(pid)
         if not provider:
             continue
-        key_enc = provider.get("api_key_encrypted")
-        api_key = decrypt_api_key(key_enc)
+        api_key = decrypt_api_key(provider.get("api_key_encrypted"))
         endpoint = provider.get("endpoint", "")
-        result = await _adapter.call_chat_completions(
-            pid, endpoint, api_key, upstream_model, body, stream
-        )
+        result = await adapter_call(pid, endpoint, api_key, upstream_model, body)
         resp_body, status, out_headers = result[0], result[1], result[2]
         if status >= 400:
             mark_provider_unhealthy(pid)
@@ -95,9 +96,7 @@ async def _try_chat_completions(
             continue
         out_headers["X-Router-Provider"] = pid
         out_headers["X-Router-Upstream-Model"] = upstream_model
-        if isinstance(resp_body, dict) and "model" not in resp_body:
-            resp_body["model"] = canonical_model
-        elif isinstance(resp_body, dict):
+        if isinstance(resp_body, dict):
             resp_body["model"] = canonical_model
         return resp_body, status, out_headers, pid
     return (
@@ -106,6 +105,15 @@ async def _try_chat_completions(
         {},
         None,
     )
+
+
+async def _try_chat_completions(
+    body: dict, session_id: str, canonical_model: str
+) -> tuple[Any, int, dict[str, str], str | None]:
+    """Try candidates for chat; return (body_or_stream, status, headers, chosen_provider_id)."""
+    async def call_chat(pid: str, endpoint: str, api_key: str | None, um: str, b: dict) -> Any:
+        return await _adapter.call_chat_completions(pid, endpoint, api_key, um, b, b.get("stream", False))
+    return await _try_candidates(body, session_id, canonical_model, "no_provider", call_chat)
 
 
 def _apply_openai_headers(upstream_headers: dict[str, str], out: dict[str, str], elapsed_ms: int | None = None) -> None:
@@ -130,7 +138,7 @@ async def post_chat_completions(request: Request):
         )
     session_id = get_session_id(request)
     model = body.get("model", "")
-    canonical = _resolve_canonical_model(model)
+    canonical = resolve_canonical_model(model)
     t0 = time.perf_counter()
     result_body, status, headers, provider_id = await _try_chat_completions(body, session_id, canonical)
     elapsed_ms = int((time.perf_counter() - t0) * 1000) if status < 400 else None
@@ -151,43 +159,10 @@ async def post_chat_completions(request: Request):
 async def _try_embeddings(
     body: dict, session_id: str, canonical_model: str
 ) -> tuple[dict, int, dict[str, str], str | None]:
-    candidates, chosen_id, canonical = resolve_candidates(session_id, body.get("model", ""), body)
-    if not chosen_id or not candidates:
-        return (
-            {"error": {"message": "No available provider", "type": "api_error", "code": "no_provider"}},
-            503,
-            {},
-            None,
-        )
-    upstream_model = _upstream_model_part(canonical)
-    last_error = None
-    last_status = 503
-    for p in candidates:
-        pid = p["id"]
-        provider = _get_provider(pid)
-        if not provider:
-            continue
-        api_key = decrypt_api_key(provider.get("api_key_encrypted"))
-        result = await _adapter.call_embeddings(
-            pid, provider.get("endpoint", ""), api_key, upstream_model, body
-        )
-        resp_body, status, out_headers = result[0], result[1], result[2]
-        if status >= 400:
-            mark_provider_unhealthy(pid)
-            last_error = resp_body
-            last_status = status
-            continue
-        out_headers["X-Router-Provider"] = pid
-        out_headers["X-Router-Upstream-Model"] = upstream_model
-        if isinstance(resp_body, dict):
-            resp_body["model"] = canonical_model
-        return resp_body, status, out_headers, pid
-    return (
-        last_error or {"error": {"message": "All providers failed", "type": "api_error", "code": "failover_exhausted"}},
-        last_status,
-        {},
-        None,
-    )
+    """Try candidates for embeddings; return (body, status, headers, chosen_provider_id)."""
+    async def call_emb(pid: str, endpoint: str, api_key: str | None, um: str, b: dict) -> Any:
+        return await _adapter.call_embeddings(pid, endpoint, api_key, um, b)
+    return await _try_candidates(body, session_id, canonical_model, "no_provider", call_emb)
 
 
 @router.post("/embeddings")
@@ -202,7 +177,7 @@ async def post_embeddings(request: Request):
         )
     session_id = get_session_id(request)
     model = body.get("model", "")
-    canonical = _resolve_canonical_model(model)
+    canonical = resolve_canonical_model(model)
     t0 = time.perf_counter()
     result_body, status, headers, _ = await _try_embeddings(body, session_id, canonical)
     elapsed_ms = int((time.perf_counter() - t0) * 1000) if status < 400 else None
