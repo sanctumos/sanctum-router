@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (See open issues on the repo for audit and hardening items.)
 
+## [0.1.6] - 2026-02-23
+
+### Changed
+
+- **#16:** Deduplicate server params: `get_server_params(config)` in config.py; main.py and __main__.py use it.
+- **#17:** Centralize monitoring defaults (health_check_interval 60, health_check_timeout 10.0) in config; document in credit_health; document encryption key min length (16) in crypto_utils.
+
 ## [0.1.5] - 2026-02-23
 
 ### Changed
@@ -87,7 +94,8 @@ Initial Phase 1 release: OpenAI-compatible proxy with multi-provider routing, Co
 
 - Bind to 127.0.0.1 by default. Config API and SMCP plugin have write/admin access—use only in trusted environments. Provider API keys stored encrypted in DB; require `ROUTER_ENCRYPTION_KEY` when using API keys.
 
-[Unreleased]: https://github.com/sanctumos/sanctum-router/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/sanctumos/sanctum-router/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/sanctumos/sanctum-router/releases/tag/v0.1.6
 [0.1.5]: https://github.com/sanctumos/sanctum-router/releases/tag/v0.1.5
 [0.1.4]: https://github.com/sanctumos/sanctum-router/releases/tag/v0.1.4
 [0.1.3]: https://github.com/sanctumos/sanctum-router/releases/tag/v0.1.3

@@ -17,9 +17,13 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 
+# Minimum length for ROUTER_ENCRYPTION_KEY (PBKDF2 needs sufficient entropy; 16 chars is a safe minimum).
+_MIN_ENCRYPTION_KEY_LEN = 16
+
+
 def _get_encryption_key() -> Optional[bytes]:
     raw = os.environ.get("ROUTER_ENCRYPTION_KEY")
-    if not raw or len(raw) < 16:
+    if not raw or len(raw) < _MIN_ENCRYPTION_KEY_LEN:
         return None
     # Derive a 32-byte key suitable for Fernet (AES-128-CBC + HMAC)
     kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=b"sanctum-router-db", iterations=100000)
