@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from router import __version__, db
 from router.admin import router as admin_router
 from router.bootstrap import bootstrap_from_config
-from router.config import load_config
+from router.config import load_config, get_server_params
 from router.proxy import router as proxy_router
 
 config = load_config()
@@ -54,10 +54,7 @@ app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
-    port = config["server"]["port"]
-    # Bind: 127.0.0.1 when server.admin_bind_localhost_only is True (default); 0.0.0.0 otherwise. PRD §7, plan 1.5.
-    bind_localhost = config["server"].get("admin_bind_localhost_only", True)
-    host = "127.0.0.1" if bind_localhost else "0.0.0.0"
+    host, port = get_server_params(config)
     uvicorn.run(
         "router.main:app",
         host=host,

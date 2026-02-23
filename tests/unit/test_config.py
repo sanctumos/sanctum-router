@@ -73,6 +73,16 @@ def test_get_env_contract():
     assert "ROUTER_PORT" in contract
 
 
+def test_get_server_params():
+    """get_server_params returns (host, port) from config."""
+    host, port = cfg.get_server_params({"server": {"port": 9000, "admin_bind_localhost_only": True}})
+    assert host == "127.0.0.1"
+    assert port == 9000
+    host2, port2 = cfg.get_server_params({"server": {"port": 8480, "admin_bind_localhost_only": False}})
+    assert host2 == "0.0.0.0"
+    assert port2 == 8480
+
+
 def test_load_config_from_yaml(tmp_path):
     """load_config merges YAML from ROUTER_CONFIG when file exists."""
     yaml_path = tmp_path / "config.yaml"

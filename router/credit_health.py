@@ -68,6 +68,8 @@ def register_credit_fetcher(provider_id: str, fetcher: CreditFetcher) -> None:
 
 # Health check path appended to provider base URL. Expect endpoint to be a base URL with or without /v1.
 HEALTH_CHECK_PATH = "/v1/models"
+# Defaults aligned with config.monitoring (health_check_timeout 10.0, credit_check_interval 300, health_check_interval 60).
+# When wiring loops from lifespan, read from config["monitoring"].
 
 
 async def _check_health(endpoint: str, timeout: float = 10.0) -> bool:

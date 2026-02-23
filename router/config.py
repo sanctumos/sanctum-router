@@ -35,7 +35,11 @@ def load_config() -> dict[str, Any]:
         "server": {"port": 8480, "admin_bind_localhost_only": True},
         "providers": {},
         "routing": {"strategy": "priority", "cost_optimization": False},
-        "monitoring": {"credit_check_interval": 300},
+        "monitoring": {
+            "credit_check_interval": 300,
+            "health_check_interval": 60,
+            "health_check_timeout": 10.0,
+        },
     }
 
     config_path = os.environ.get("ROUTER_CONFIG")
@@ -61,6 +65,14 @@ def load_config() -> dict[str, Any]:
             pass
 
     return out
+
+
+def get_server_params(config: dict[str, Any]) -> tuple[str, int]:
+    """Return (host, port) for uvicorn. Used by main.py and __main__.py to avoid duplication."""
+    port = config["server"]["port"]
+    bind_localhost = config["server"].get("admin_bind_localhost_only", True)
+    host = "127.0.0.1" if bind_localhost else "0.0.0.0"
+    return host, port
 
 
 def get_env_contract() -> dict[str, str]:
