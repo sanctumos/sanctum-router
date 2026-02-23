@@ -28,7 +28,7 @@ def uptime_seconds() -> int:
 
 @router.get("/status")
 async def get_status(request: Request):
-    """GET /admin/status — version, providers_healthy, uptime; current_provider for request session (Bearer or X-Router-Session-Id)."""
+    """GET /admin/status — version, providers_healthy, uptime. current_provider is the override for the caller's session (who is calling this API), not the current provider for proxy traffic."""
     session_id = get_session_id(request)
     current_provider = db.agent_override_get(session_id)
     return {
@@ -192,7 +192,11 @@ class EstimateCostBody(BaseModel):
 
 @router.post("/estimate-cost")
 async def estimate_cost(body: EstimateCostBody):
-    """POST /admin/estimate-cost — MVP: placeholder or static lookup."""
+    """POST /admin/estimate-cost — MVP: placeholder. Contract: model optional; prompt_tokens and completion_tokens must be non-negative when provided."""
+    if body.prompt_tokens is not None and body.prompt_tokens < 0:
+        raise HTTPException(status_code=400, detail="prompt_tokens must be non-negative")
+    if body.completion_tokens is not None and body.completion_tokens < 0:
+        raise HTTPException(status_code=400, detail="completion_tokens must be non-negative")
     return {
         "estimated_cost": 0.0,
         "currency": "USD",
