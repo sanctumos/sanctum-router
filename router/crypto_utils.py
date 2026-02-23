@@ -22,6 +22,11 @@ def _get_encryption_key() -> Optional[bytes]:
     return base64.urlsafe_b64encode(kdf.derive(raw.encode("utf-8") if isinstance(raw, str) else raw))
 
 
+def encryption_available() -> bool:
+    """Return True if ROUTER_ENCRYPTION_KEY is set and valid (min 16 chars). Use before storing API keys."""
+    return _get_encryption_key() is not None
+
+
 def encrypt_api_key(plaintext: Optional[str]) -> Optional[bytes]:
     if plaintext is None or plaintext == "":
         return None

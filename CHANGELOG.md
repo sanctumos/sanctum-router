@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (See open issues on the repo for audit and hardening items.)
 
+## [0.1.2] - 2026-02-23
+
+### Fixed
+
+- **Issue #2:** Require `ROUTER_ENCRYPTION_KEY` when storing provider API keys. Admin create/patch return 400 with a clear message if key is missing or too short; bootstrap raises at startup instead of silently storing NULL.
+- **Issue #4:** Use constant-time comparison (`hmac.compare_digest`) for client and admin token auth to avoid timing side channels.
+
+### Added
+
+- `crypto_utils.encryption_available()` to check if encryption key is set. Integration test for create_provider when encryption unavailable.
+
 ## [0.1.1] - 2026-02-23
 
 ### Fixed
@@ -49,6 +60,7 @@ Initial Phase 1 release: OpenAI-compatible proxy with multi-provider routing, Co
 
 - Bind to 127.0.0.1 by default. Config API and SMCP plugin have write/admin access—use only in trusted environments. Provider API keys stored encrypted in DB; require `ROUTER_ENCRYPTION_KEY` when using API keys.
 
-[Unreleased]: https://github.com/sanctumos/sanctum-router/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/sanctumos/sanctum-router/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/sanctumos/sanctum-router/releases/tag/v0.1.2
 [0.1.1]: https://github.com/sanctumos/sanctum-router/releases/tag/v0.1.1
 [0.1.0]: https://github.com/sanctumos/sanctum-router/releases/tag/v0.1.0
