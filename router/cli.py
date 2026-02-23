@@ -147,7 +147,20 @@ def cmd_credit(json_out: bool) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Sanctum Router CLI — Config API client")
+    parser = argparse.ArgumentParser(
+        description="Sanctum Router CLI — Config API client",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Available commands:
+  status      GET /admin/status
+  providers   list | add | remove (--id, --endpoint, etc.)
+  routing     get | set (--strategy, --provider-order, --failover)
+  override    set (provider_id or omit to clear)
+  credit      GET /admin/credit
+
+Use --json for machine-readable output. UCW/SMCP: use --describe on the sanctum_router plugin for full tool spec.
+        """,
+    )
     parser.add_argument("--json", action="store_true", help="Output JSON")
     sub = parser.add_subparsers(dest="command")
 

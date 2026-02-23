@@ -2,6 +2,14 @@
 
 Plugins for [sanctumos/smcp](https://github.com/sanctumos/smcp). Copy `sanctum_router` into your `MCP_PLUGINS_DIR`.
 
+## SMCP contract
+
+The plugin follows the SMCP plugin design:
+
+- **Discovery:** SMCP runs `python cli.py --describe` and expects JSON: `{ "plugin": { name, version, description }, "commands": [ { name, description, parameters } ] }`. Each command becomes a tool `sanctum_router__<name>`.
+- **Execution:** SMCP runs `python cli.py <command> --arg1 val1 ...`. Arguments use `--kebab-case` (e.g. `--provider-id`). The plugin prints the tool result as JSON to stdout.
+- **Fallback:** If `--describe` is not supported, SMCP parses `--help` for an "Available commands:" section; the plugin epilog includes that.
+
 ## Security warning
 
 **Loading SMCP tools with write/admin access is an intentional security boundary.** These tools call the router Config API (add/remove providers, override, routing config). Use only in **trusted/local environments**. Do not expose the Config API or plugin controls to untrusted users.
