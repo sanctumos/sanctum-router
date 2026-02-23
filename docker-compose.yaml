@@ -1,0 +1,25 @@
+# Sanctum Router — single container, persistent /data, localhost-only port.
+# PRD §7, §12. Port mapping 127.0.0.1:8480:8480 (localhost-only on host).
+
+services:
+  router:
+    build: .
+    ports:
+      - "127.0.0.1:8480:8480"
+    volumes:
+      - router_data:/data
+    environment:
+      - ROUTER_DB_PATH=/data/router.db
+      - ROUTER_CLIENT_KEY=${ROUTER_CLIENT_KEY:-}
+      - ROUTER_ADMIN_KEY=${ROUTER_ADMIN_KEY:-}
+      - ROUTER_ENCRYPTION_KEY=${ROUTER_ENCRYPTION_KEY:-}
+      - ROUTER_CONFIG=${ROUTER_CONFIG:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8480/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  router_data:

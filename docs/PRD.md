@@ -93,8 +93,8 @@ Sanctum Router is a Dockerized proxy providing an OpenAI-compatible API for agen
 - **Intelligent routing logic:** By task complexity, cost, provider health, and rules
 - **Agent control via SMCP:** Router ships **SMCP plugins** (sanctumos/smcp–compatible) for status, override, and routing logic; CLI is wrapped with **UCW** (actuallyrizzn/ucw) so the same surface is exposed as SMCP plugins — no bundled MCP server in the image
 - **CLI utilities** for provider/config and routing logic (priority, failover rules); CLI designed to be UCW-wrapable for SMCP plugin generation
-- **Request logging, analytics, and observability**
-- **Local SQLite DB** for routing state, failover conditions, and logs
+- **Observability:** health endpoint, config/status via Config API; no request/usage logging to DB in MVP
+- **Local SQLite DB** for routing state and failover conditions
 
 ---
 
@@ -192,7 +192,7 @@ All mutations (override, routing-config, provider add/remove/update) persist to 
 
 ### Database schema (SQLite)
 
-Single SQLite database inside the container: provider definitions (with encrypted credentials), routing state, failover conditions, overrides, request logs. **No plaintext secrets in DB;** credentials in `providers` are encrypted at rest (key from environment).
+Single SQLite database inside the container: provider definitions (with encrypted credentials), routing state, failover conditions, overrides. **No request/usage logging to DB in MVP.** No plaintext secrets in DB; credentials in `providers` are encrypted at rest (key from environment).
 
 **Tables:**
 
@@ -251,25 +251,13 @@ CREATE TABLE agent_override (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Request/usage log
-CREATE TABLE request_logs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  ts TEXT NOT NULL DEFAULT (datetime('now')),
-  provider_id TEXT NOT NULL,
-  model TEXT NOT NULL,
-  endpoint TEXT NOT NULL,
-  prompt_tokens INTEGER NOT NULL DEFAULT 0,
-  completion_tokens INTEGER NOT NULL DEFAULT 0,
-  latency_ms INTEGER,
-  request_id TEXT
-);
 ```
 
 **Notes:**
 - **Providers:** Add/remove/update via Config API; optional bootstrap from YAML/ENV at first run. Credentials encrypted before write; decrypted only in memory when calling upstream.
 - **Session:** `agent_override.session_id` = hash of the request’s Bearer token unless `X-Router-Session-Id` is set. When `ROUTER_ADMIN_KEY` equals `ROUTER_CLIENT_KEY`, the same token ties override to inference. When keys differ, use `X-Router-Session-Id` on both admin and proxy requests to correlate.
 - **Model IDs:** Canonical form `<provider>+<model>`. `model_aliases` maps short names to canonical IDs. `/v1/models` returns only models from `providers.models` (and aliases), not full upstream catalogs.
-- **request_logs:** Append-only; define retention/rotation in a later phase.
+- **No request/usage logging to DB in MVP.** Observability is via health endpoint and Config API only.
 
 ---
 
@@ -282,7 +270,7 @@ CREATE TABLE request_logs (
   - **Config API:** `/admin/*` — routing config, provider add/list/remove/update, credit, overrides. Auth: **ROUTER_ADMIN_KEY** (Bearer or X-API-Key). **Ideally bindable to localhost-only.** CLI and SMCP plugins (outside container) call this over HTTP. Default router port is **configurable and non-standard** (e.g. 8480) to avoid self-loop; Docker maps it to host.
 - Routing Engine, Provider Adapters (with capability flags), Credit Monitor, Analytics
 - **SMCP/UCW:** Ship SMCP plugins; CLI and plugins call Config API. CLI wrapable via UCW for SMCP plugin generation.
-- **Local SQLite DB:** provider definitions (credentials encrypted at rest), routing config, failover conditions, agent overrides, request logs. No plaintext secrets in DB. **Path:** e.g. `/data/router.db`; **must mount `/data`** (or configured data dir) as a persistent Docker volume so state survives container restarts.
+- **Local SQLite DB:** provider definitions (credentials encrypted at rest), routing config, failover conditions, agent overrides. No request logging to DB. No plaintext secrets in DB. **Path:** e.g. `/data/router.db`; **must mount `/data`** (or configured data dir) as a persistent Docker volume so state survives container restarts.
 - Healthcheck endpoint for Docker orchestration
 
 **Ecosystem & references:**
@@ -380,7 +368,7 @@ monitoring:
 - CLI for provider config/add/remove/list/status and for routing logic (priority, failover rules); CLI UCW-wrapable for SMCP plugin exposure
 - SMCP plugins for agent (status, override, routing logic); dev: run SMCP server (sanctumos/smcp) for testing; ship: plugins only, no MCP server in image
 - Full OpenAI HTTP API including `/v1/models` (model listing) distinct from CLI
-- Request logging, health endpoint; SQLite for routing state + logs
+- Health endpoint; SQLite for routing state only (no request/usage logs in MVP)
 - Dockerfile/demo compose setup
 
 ### Phase 2 (Future)
@@ -432,10 +420,10 @@ Phase 1 routing stays simple and explicit:
 
 “Complexity estimation” and deeper cost/budget optimization remain Phase 2 unless explicitly scoped in.
 
-### Logging / DB write load (not a bottleneck in this design)
+### Logging / DB write load
 
-- **No prompt or completion content is stored**.
-- SQLite writes are primarily **config/state**, not high-volume inference logging, so write contention should not be an issue in MVP.
+- **No request/usage logging to DB in MVP.** No prompt or completion content is stored.
+- SQLite writes are **config/state only** (providers, routing, overrides), so write load is low.
 
 ---
 
@@ -478,7 +466,7 @@ Use this checklist to tighten the PRD or track implementation. Items should be r
 
 ## DB schema
 
-- [x] **Schema in PRD:** PRD now includes **§ Database schema (SQLite)** with tables: `routing_config`, `provider_priority`, `failover_conditions`, `agent_override`, `request_logs`.
+- [x] **Schema in PRD:** PRD now includes **§ Database schema (SQLite)** with tables: `providers`, `routing_config`, `provider_priority`, `failover_conditions`, `model_aliases`, `agent_override`. No request_logs in MVP.
 - [ ] Implement schema in code; document what lives in DB vs YAML (see Routing Logic Control & SQLite).
 
 ## SMCP/Agent Override & Authz

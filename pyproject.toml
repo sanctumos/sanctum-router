@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sanctum-router"
+version = "0.1.0"
+description = "Self-hosted OpenAI-compatible inference proxy with multi-provider routing"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "AGPL-3.0" }
+dependencies = [
+    "fastapi>=0.104",
+    "uvicorn[standard]>=0.24",
+    "pyyaml>=6.0",
+    "cryptography>=41.0",
+    "httpx>=0.25",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["router*"]
+
+[project.scripts]
+router-cli = "router.cli:main"
