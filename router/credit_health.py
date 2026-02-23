@@ -66,8 +66,17 @@ def register_credit_fetcher(provider_id: str, fetcher: CreditFetcher) -> None:
     _credit_fetchers[provider_id] = fetcher
 
 
+# Health check path appended to provider base URL. Expect endpoint to be a base URL with or without /v1.
+HEALTH_CHECK_PATH = "/v1/models"
+
+
 async def _check_health(endpoint: str, timeout: float = 10.0) -> bool:
-    """GET provider endpoint (e.g. /v1/models)."""
+    """
+    GET provider health endpoint. Returns True if status < 500.
+
+    Expected endpoint shape: base URL (e.g. https://api.example.com or https://api.example.com/v1).
+    If base ends with 'v1', we append /models; otherwise /v1/models. Non-http URLs return False.
+    """
     base = endpoint.rstrip("/")
     url = base + "/models" if base.endswith("v1") else base + "/v1/models"
     if not url.startswith("http"):
