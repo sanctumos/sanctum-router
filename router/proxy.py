@@ -131,7 +131,7 @@ async def post_chat_completions(request: Request):
     """POST /v1/chat/completions — route, proxy, failover; set X-Router-*; echo model; echo openai-version/openai-processing-ms."""
     try:
         body = await request.json()
-    except Exception:
+    except (ValueError, TypeError):
         return JSONResponse(
             status_code=400,
             content={"error": {"message": "Invalid JSON", "type": "invalid_request_error", "code": "invalid_json"}},
@@ -170,7 +170,7 @@ async def post_embeddings(request: Request):
     """POST /v1/embeddings — route, proxy, failover; set X-Router-*; echo model; echo openai-version/openai-processing-ms."""
     try:
         body = await request.json()
-    except Exception:
+    except (ValueError, TypeError):
         return JSONResponse(
             status_code=400,
             content={"error": {"message": "Invalid JSON", "type": "invalid_request_error", "code": "invalid_json"}},

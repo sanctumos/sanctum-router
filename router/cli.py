@@ -12,6 +12,15 @@ import sys
 import httpx
 
 
+def _parse_bool(s: str | bool | None) -> bool | None:
+    """Parse CLI bool: 'true'/'false'/'1'/'0' (case-insensitive). type=bool is wrong (bool('false') is True)."""
+    if s is None or (isinstance(s, str) and not s.strip()):
+        return None
+    if isinstance(s, bool):
+        return s
+    return str(s).strip().lower() in ("true", "1", "yes")
+
+
 def _base_url() -> str:
     url = os.environ.get("ROUTER_URL", "http://127.0.0.1:8480")
     return url.rstrip("/")
@@ -174,15 +183,15 @@ Use --json for machine-readable output. UCW/SMCP: use --describe on the sanctum_
     p_providers.add_argument("--priority", type=int, help="Priority (add)")
     p_providers.add_argument("--credit-threshold", type=float, dest="credit_threshold")
     p_providers.add_argument("--api-key", dest="api_key")
-    p_providers.add_argument("--supports-tools", type=bool, dest="supports_tools", default=True)
-    p_providers.add_argument("--supports-streaming", type=bool, dest="supports_streaming", default=True)
-    p_providers.add_argument("--supports-multimodal", type=bool, dest="supports_multimodal", default=False)
+    p_providers.add_argument("--supports-tools", type=_parse_bool, dest="supports_tools", default=True)
+    p_providers.add_argument("--supports-streaming", type=_parse_bool, dest="supports_streaming", default=True)
+    p_providers.add_argument("--supports-multimodal", type=_parse_bool, dest="supports_multimodal", default=False)
 
     p_routing = sub.add_parser("routing", help="Routing config")
     p_routing.add_argument("sub", nargs="?", choices=["get", "set"], help="get | set")
     p_routing.add_argument("--strategy", help="Strategy (set)")
     p_routing.add_argument("--provider-order", dest="provider_order", help="Comma-separated provider ids (set)")
-    p_routing.add_argument("--cost-optimization", type=bool, dest="cost_optimization")
+    p_routing.add_argument("--cost-optimization", type=_parse_bool, dest="cost_optimization")
     p_routing.add_argument("--failover", help="JSON array of failover conditions, e.g. [{\"provider_id\":\"venice\",\"condition\":\"credit_threshold\",\"value\":0.5}]")
 
     p_override = sub.add_parser("override", help="Session override")

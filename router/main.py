@@ -40,9 +40,10 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health():
         """Healthcheck for Docker/orchestration; no auth. Returns 200 when app is up."""
+        import sqlite3
         try:
             db.provider_count()
-        except Exception:
+        except (sqlite3.Error, OSError):
             return {"status": "degraded", "db": "error"}
         return {"status": "ok"}
 
