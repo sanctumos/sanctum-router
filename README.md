@@ -51,6 +51,10 @@
 | `ROUTER_PORT` | Override server port (default 8480). |
 | `ROUTER_URL` | Base URL for CLI/plugins (e.g. `http://127.0.0.1:8480`). |
 
+## Session override
+
+Provider override is keyed by **session ID**: either `X-Router-Session-Id` or the hash of the request’s Bearer token. The CLI uses the admin key, so overrides set via the CLI apply to the **admin** session. For proxy clients to see a CLI-set override, they must use the same session: send the same Bearer token (when client and admin keys match) or the same `X-Router-Session-Id` on proxy requests. When admin and client keys differ, proxy clients must send the same session identifier on `/v1/*` requests for CLI-set overrides to apply.
+
 ## Security warning
 
 - **Bind to localhost by default.** Do not expose the router or Config API publicly. Use Docker port mapping `127.0.0.1:8480:8480` so only the host can reach it.

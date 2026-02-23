@@ -220,7 +220,7 @@ def _normalize_failover_for_response(rows: list[dict[str, Any]]) -> list[dict[st
 
 @router.get("/routing-config")
 async def get_routing_config():
-    """GET /admin/routing-config — strategy, provider_order, failover from DB."""
+    """GET /admin/routing-config — strategy, provider_order, failover from DB. provider_order is the effective routing order used by the routing engine."""
     rc = db.routing_config_get()
     order = db.provider_priority_get_all()
     failover_rows = db.failover_conditions_get_all()
@@ -248,7 +248,7 @@ class RoutingConfigBody(BaseModel):
 @router.put("/routing-config")
 @router.patch("/routing-config")
 async def set_routing_config(body: RoutingConfigBody):
-    """PUT/PATCH /admin/routing-config — update routing_config, provider_priority, and failover_conditions."""
+    """PUT/PATCH /admin/routing-config — partial update (per PRD): only provided fields are updated; unset fields left unchanged. Same semantics for both verbs."""
     if body.strategy is not None or body.cost_optimization is not None:
         db.routing_config_set(
             strategy=body.strategy,

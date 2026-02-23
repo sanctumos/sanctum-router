@@ -2,6 +2,10 @@
 Credential encryption for provider API keys. ROUTER_ENCRYPTION_KEY from env.
 Encrypt before write to providers.api_key_encrypted; decrypt only in memory when calling provider.
 Never log or return decrypted keys. PRD §12 Persistence & secrets.
+
+Key derivation: PBKDF2-HMAC-SHA256 with a fixed salt (no per-key salt stored). Key rotation is not
+automatic: changing ROUTER_ENCRYPTION_KEY requires re-encrypting all provider API keys (e.g. via
+admin PATCH with the new key set); existing ciphertexts cannot be decrypted with a new key.
 """
 
 import base64
