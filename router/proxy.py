@@ -108,9 +108,19 @@ async def _try_chat_completions(
     )
 
 
+def _apply_openai_headers(upstream_headers: dict[str, str], out: dict[str, str], elapsed_ms: int | None = None) -> None:
+    """Echo openai-version and openai-processing-ms from upstream; set processing-ms from elapsed if missing. PRD optional headers."""
+    if upstream_headers.get("openai-version"):
+        out["openai-version"] = upstream_headers["openai-version"]
+    if upstream_headers.get("openai-processing-ms"):
+        out["openai-processing-ms"] = upstream_headers["openai-processing-ms"]
+    elif elapsed_ms is not None:
+        out["openai-processing-ms"] = str(elapsed_ms)
+
+
 @router.post("/chat/completions")
 async def post_chat_completions(request: Request):
-    """POST /v1/chat/completions — route, proxy, failover; set X-Router-*; echo model."""
+    """POST /v1/chat/completions — route, proxy, failover; set X-Router-*; echo model; echo openai-version/openai-processing-ms."""
     try:
         body = await request.json()
     except Exception:
@@ -121,7 +131,10 @@ async def post_chat_completions(request: Request):
     session_id = get_session_id(request)
     model = body.get("model", "")
     canonical = _resolve_canonical_model(model)
+    t0 = time.perf_counter()
     result_body, status, headers, provider_id = await _try_chat_completions(body, session_id, canonical)
+    elapsed_ms = int((time.perf_counter() - t0) * 1000) if status < 400 else None
+    _apply_openai_headers(headers, headers, elapsed_ms)
     if hasattr(result_body, "__aiter__"):
         async def stream_echo():
             async for chunk in result_body:
@@ -179,7 +192,7 @@ async def _try_embeddings(
 
 @router.post("/embeddings")
 async def post_embeddings(request: Request):
-    """POST /v1/embeddings — route, proxy, failover; set X-Router-*; echo model."""
+    """POST /v1/embeddings — route, proxy, failover; set X-Router-*; echo model; echo openai-version/openai-processing-ms."""
     try:
         body = await request.json()
     except Exception:
@@ -190,5 +203,8 @@ async def post_embeddings(request: Request):
     session_id = get_session_id(request)
     model = body.get("model", "")
     canonical = _resolve_canonical_model(model)
+    t0 = time.perf_counter()
     result_body, status, headers, _ = await _try_embeddings(body, session_id, canonical)
+    elapsed_ms = int((time.perf_counter() - t0) * 1000) if status < 400 else None
+    _apply_openai_headers(headers, headers, elapsed_ms)
     return JSONResponse(content=result_body, status_code=status, headers=dict(headers))

@@ -62,13 +62,19 @@ def get_routing_config() -> str:
     return _run_cli(["routing", "get"])
 
 
-def set_routing_config(strategy: str | None = None, provider_order: str | None = None) -> str:
-    """Update routing config (strategy, comma-separated provider_order)."""
+def set_routing_config(
+    strategy: str | None = None,
+    provider_order: str | None = None,
+    failover: str | list | None = None,
+) -> str:
+    """Update routing config (strategy, comma-separated provider_order, optional failover JSON array)."""
     args = ["routing", "set"]
     if strategy:
         args.extend(["--strategy", strategy])
     if provider_order:
         args.extend(["--provider-order", provider_order])
+    if failover is not None:
+        args.extend(["--failover", json.dumps(failover) if isinstance(failover, list) else failover])
     return _run_cli(args)
 
 

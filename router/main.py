@@ -55,10 +55,12 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
     port = config["server"]["port"]
-    # Bind whole router to 127.0.0.1 by default (localhost-only). PRD §7, plan 1.5.
+    # Bind: 127.0.0.1 when server.admin_bind_localhost_only is True (default); 0.0.0.0 otherwise. PRD §7, plan 1.5.
+    bind_localhost = config["server"].get("admin_bind_localhost_only", True)
+    host = "127.0.0.1" if bind_localhost else "0.0.0.0"
     uvicorn.run(
         "router.main:app",
-        host="127.0.0.1",
+        host=host,
         port=port,
         reload=False,
     )

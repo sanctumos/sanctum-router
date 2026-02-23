@@ -116,6 +116,11 @@ def cmd_routing_set(args: argparse.Namespace, json_out: bool) -> None:
         body["provider_order"] = args.provider_order.split(",") if isinstance(args.provider_order, str) else args.provider_order
     if getattr(args, "cost_optimization", None) is not None:
         body["cost_optimization"] = args.cost_optimization
+    if getattr(args, "failover", None):
+        try:
+            body["failover"] = json.loads(args.failover) if isinstance(args.failover, str) else args.failover
+        except (json.JSONDecodeError, TypeError):
+            body["failover"] = []
     data = _put("/admin/routing-config", body)
     if json_out:
         print(json.dumps(data, indent=2))
@@ -165,6 +170,7 @@ def main() -> int:
     p_routing.add_argument("--strategy", help="Strategy (set)")
     p_routing.add_argument("--provider-order", dest="provider_order", help="Comma-separated provider ids (set)")
     p_routing.add_argument("--cost-optimization", type=bool, dest="cost_optimization")
+    p_routing.add_argument("--failover", help="JSON array of failover conditions, e.g. [{\"provider_id\":\"venice\",\"condition\":\"credit_threshold\",\"value\":0.5}]")
 
     p_override = sub.add_parser("override", help="Session override")
     p_override.add_argument("sub", nargs="?", choices=["set"], help="set")

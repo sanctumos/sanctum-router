@@ -303,6 +303,18 @@ def failover_conditions_delete_for_provider(provider_id: str) -> None:
         c.execute("DELETE FROM failover_conditions WHERE provider_id = ?", (provider_id,))
 
 
+def failover_conditions_replace_all(conditions: list[tuple[str, str, Any]]) -> None:
+    """Replace all failover conditions. Each item: (provider_id, condition_type, threshold_value)."""
+    with _get_conn() as c:
+        c.execute("DELETE FROM failover_conditions")
+        for provider_id, condition_type, threshold_value in conditions:
+            c.execute(
+                """INSERT INTO failover_conditions (provider_id, condition_type, threshold_value, updated_at)
+                VALUES (?, ?, ?, datetime('now'))""",
+                (provider_id, condition_type, threshold_value),
+            )
+
+
 # --- model_aliases ---
 
 def model_aliases_get_all() -> dict[str, str]:

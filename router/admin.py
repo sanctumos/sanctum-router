@@ -2,7 +2,7 @@
 
 import json
 import time
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, Request, HTTPException
 from pydantic import BaseModel
@@ -27,12 +27,14 @@ def uptime_seconds() -> int:
 
 
 @router.get("/status")
-async def get_status():
-    """GET /admin/status — version, providers_healthy from in-memory health, uptime."""
+async def get_status(request: Request):
+    """GET /admin/status — version, providers_healthy, uptime; current_provider for request session (Bearer or X-Router-Session-Id)."""
+    session_id = get_session_id(request)
+    current_provider = db.agent_override_get(session_id)
     return {
         "status": "ok",
         "version": __version__,
-        "current_provider": None,
+        "current_provider": current_provider,
         "providers_healthy": get_all_health(),
         "uptime_seconds": uptime_seconds(),
     }
@@ -74,7 +76,7 @@ class ProviderCreate(BaseModel):
 
 @router.post("/providers")
 async def create_provider(p: ProviderCreate):
-    """POST /admin/providers — allowed fields include supports_multimodal; encrypt api_key."""
+    """POST /admin/providers — allowed fields include supports_multimodal; encrypt api_key. Returns { ok, provider } per PRD."""
     models_str = p.models if isinstance(p.models, str) else json.dumps(p.models)
     enc = encrypt_api_key(p.api_key) if p.api_key else None
     db.provider_insert(
@@ -89,7 +91,19 @@ async def create_provider(p: ProviderCreate):
         supports_multimodal=1 if p.supports_multimodal else 0,
     )
     db.provider_priority_set(p.id, p.priority)
-    return {"id": p.id, "endpoint": p.endpoint, "priority": p.priority}
+    health = get_all_health()
+    provider = {
+        "id": p.id,
+        "endpoint": p.endpoint,
+        "models": models_str,
+        "priority": p.priority,
+        "credit_threshold": p.credit_threshold,
+        "supports_tools": p.supports_tools,
+        "supports_streaming": p.supports_streaming,
+        "supports_multimodal": p.supports_multimodal,
+        "healthy": health.get(p.id, True),
+    }
+    return {"ok": True, "provider": provider}
 
 
 class ProviderPatch(BaseModel):
@@ -177,29 +191,54 @@ async def estimate_cost(body: EstimateCostBody):
     }
 
 
+def _normalize_failover_for_response(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Map DB shape (condition_type, threshold_value) to PRD shape (condition, value)."""
+    out = []
+    for r in rows:
+        c = r.get("condition_type", "")
+        if c == "health_failure":
+            c = "health"
+        out.append({
+            "id": r.get("id"),
+            "provider_id": r.get("provider_id"),
+            "condition": c,
+            "value": r.get("threshold_value"),
+            "updated_at": r.get("updated_at"),
+        })
+    return out
+
+
 @router.get("/routing-config")
 async def get_routing_config():
     """GET /admin/routing-config — strategy, provider_order, failover from DB."""
     rc = db.routing_config_get()
     order = db.provider_priority_get_all()
-    failover = db.failover_conditions_get_all()
+    failover_rows = db.failover_conditions_get_all()
     return {
         "strategy": rc.get("strategy", "priority"),
         "provider_order": [pid for pid, _ in sorted(order, key=lambda x: x[1])] if order else [p["id"] for p in sorted(db.provider_list(), key=lambda x: x["priority"])],
-        "failover": failover,
+        "failover": _normalize_failover_for_response(failover_rows),
     }
+
+
+class FailoverItem(BaseModel):
+    """One failover condition: PRD shape condition (credit_threshold|health), value optional."""
+    provider_id: str
+    condition: Literal["credit_threshold", "health"]
+    value: Optional[float] = None
 
 
 class RoutingConfigBody(BaseModel):
     strategy: Optional[str] = None
     cost_optimization: Optional[bool] = None
     provider_order: Optional[list[str]] = None
+    failover: Optional[list[FailoverItem]] = None
 
 
 @router.put("/routing-config")
 @router.patch("/routing-config")
 async def set_routing_config(body: RoutingConfigBody):
-    """PUT/PATCH /admin/routing-config — update routing_config and provider_priority."""
+    """PUT/PATCH /admin/routing-config — update routing_config, provider_priority, and failover_conditions."""
     if body.strategy is not None or body.cost_optimization is not None:
         db.routing_config_set(
             strategy=body.strategy,
@@ -208,4 +247,12 @@ async def set_routing_config(body: RoutingConfigBody):
     if body.provider_order is not None:
         for i, pid in enumerate(body.provider_order):
             db.provider_priority_set(pid, i)
-    return await get_routing_config()
+    if body.failover is not None:
+        # PRD condition "health" -> DB condition_type "health_failure"
+        conditions = []
+        for item in body.failover:
+            ctype = "health_failure" if item.condition == "health" else item.condition
+            conditions.append((item.provider_id, ctype, item.value))
+        db.failover_conditions_replace_all(conditions)
+    config = await get_routing_config()
+    return {"ok": True, "routing_config": config}

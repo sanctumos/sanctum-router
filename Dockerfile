@@ -14,5 +14,5 @@ COPY plugins/ ./plugins/
 ENV ROUTER_DB_PATH=/data/router.db
 EXPOSE 8480
 
-# Single entrypoint: bind 127.0.0.1 by default; use Docker port mapping for host.
-CMD ["python", "-m", "uvicorn", "router.main:app", "--host", "127.0.0.1", "--port", "8480"]
+# Entrypoint runs router.main so config (admin_bind_localhost_only, port) is applied.
+CMD ["python", "-m", "router.main"]
