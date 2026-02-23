@@ -2,6 +2,9 @@
 SQLite data access layer. PRD § Database schema.
 No request_logs table; no request/usage logging to DB in Phase 1.
 PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL.
+
+Concurrency: each operation opens a new connection (_get_conn). No connection pool; acceptable for v0.1.
+If traffic grows, consider a small pool or long-lived connection with locking; document concurrency assumptions.
 """
 
 import json

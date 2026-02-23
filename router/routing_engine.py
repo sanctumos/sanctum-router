@@ -60,7 +60,7 @@ def _providers_with_model(providers: list[dict[str, Any]], upstream_model: str) 
         if isinstance(models_raw, str):
             try:
                 models = json.loads(models_raw)
-            except Exception:
+            except (json.JSONDecodeError, TypeError):
                 models = []
         else:
             models = models_raw

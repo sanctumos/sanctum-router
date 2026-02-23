@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sanctum-router"
-version = "0.1.6"
+version = "0.1.7"
 description = "Self-hosted OpenAI-compatible inference proxy with multi-provider routing"
 readme = "README.md"
 requires-python = ">=3.10"

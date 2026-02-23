@@ -87,7 +87,7 @@ async def _check_health(endpoint: str, timeout: float = 10.0) -> bool:
         async with httpx.AsyncClient(timeout=timeout) as client:
             r = await client.get(url)
             return r.status_code < 500
-    except Exception:
+    except (OSError, httpx.RequestError):
         return False
 
 
@@ -104,6 +104,7 @@ async def run_credit_loop(
     """
     Background loop: every interval_seconds, for each provider get balance (via fetcher or None),
     compare to threshold from get_providers (provider_id, credit_threshold), update in-memory state.
+    Not started by the app by default; start from lifespan or treat as plugin/external responsibility.
     """
     while True:
         try:
@@ -114,11 +115,13 @@ async def run_credit_loop(
                 if fetcher:
                     try:
                         balance = await fetcher(provider_id)
-                    except Exception:
+                    except (OSError, ValueError):
                         pass
                 below = credit_threshold is not None and balance is not None and balance < credit_threshold
                 set_credit_state(provider_id, balance, below)
-        except Exception:
+        except asyncio.CancelledError:
+            raise
+        except (OSError, ValueError, KeyError):
             pass
         await asyncio.sleep(interval_seconds)
 
@@ -127,11 +130,13 @@ async def run_health_loop(
     get_provider_endpoints: Callable[[], list[tuple[str, str]]],
     interval_seconds: float = 60,
 ) -> None:
-    """Background loop: every interval_seconds, GET each provider endpoint and set healthy/unhealthy."""
+    """Background loop: every interval_seconds, GET each provider endpoint and set healthy/unhealthy. Not started by app by default; start from lifespan or treat as plugin/external responsibility."""
     while True:
         try:
             for provider_id, endpoint in get_provider_endpoints():
                 await run_health_check(provider_id, endpoint)
-        except Exception:
+        except asyncio.CancelledError:
+            raise
+        except (OSError, ValueError):
             pass
         await asyncio.sleep(interval_seconds)

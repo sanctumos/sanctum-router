@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (See open issues on the repo for audit and hardening items.)
 
+## [0.1.7] - 2026-02-23
+
+### Changed
+
+- **#10:** Narrow exception handling: health endpoint catches `sqlite3.Error` and `OSError`; proxy JSON parse catches `ValueError` and `TypeError`; routing_engine JSON parse catches `json.JSONDecodeError` and `TypeError`; credit_health loops re-raise `asyncio.CancelledError` and catch only `OSError`/`ValueError`/`KeyError` or `httpx.RequestError` where appropriate.
+- **#7:** Document in `db.py` that v0.1 uses no connection pool; acceptable for current load; if traffic grows, consider a small pool or long-lived connection; document concurrency assumptions.
+- **#11:** Document in `credit_health.py` that `run_credit_loop` and `run_health_loop` are not started by the app by default; they are plugin/external responsibility unless started from lifespan.
+- **#21:** CLI boolean flags: `--supports-tools`, `--supports-streaming`, `--supports-multimodal`, and `--cost-optimization` now use a `_parse_bool` helper that correctly parses `true`/`false`/`1`/`0` (case-insensitive) instead of `type=bool` (which made `--supports-tools false` truthy).
+
 ## [0.1.6] - 2026-02-23
 
 ### Changed

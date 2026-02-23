@@ -1,6 +1,7 @@
 """Unit tests for router.credit_health async (run_health_check, _check_health)."""
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from router import credit_health as ch
@@ -36,12 +37,12 @@ async def test_check_health_returns_false_on_5xx():
 
 @pytest.mark.asyncio
 async def test_check_health_returns_false_on_exception():
-    """_check_health returns False on request error."""
+    """_check_health returns False on request error (e.g. OSError or httpx.RequestError)."""
     with patch("router.credit_health.httpx.AsyncClient") as ac:
         ac.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
         ac.return_value.__aexit__ = AsyncMock(return_value=None)
         inst = ac.return_value.__aenter__.return_value
-        inst.get = AsyncMock(side_effect=Exception("network error"))
+        inst.get = AsyncMock(side_effect=httpx.RequestError("network error"))
         ok = await ch._check_health("https://api.example.com", timeout=1.0)
         assert ok is False
 
