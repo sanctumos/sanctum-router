@@ -36,20 +36,20 @@ def create_app() -> FastAPI:
     )
     app.include_router(proxy_router)
     app.include_router(admin_router)
+
+    @app.get("/health")
+    async def health():
+        """Healthcheck for Docker/orchestration; no auth. Returns 200 when app is up."""
+        try:
+            db.provider_count()
+        except Exception:
+            return {"status": "degraded", "db": "error"}
+        return {"status": "ok"}
+
     return app
 
 
 app = create_app()
-
-
-@app.get("/health")
-async def health():
-    """Healthcheck for Docker/orchestration; no auth. Returns 200 when app is up."""
-    try:
-        db.provider_count()
-    except Exception:
-        return {"status": "degraded", "db": "error"}
-    return {"status": "ok"}
 
 
 if __name__ == "__main__":
