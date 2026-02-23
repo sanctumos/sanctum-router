@@ -7,7 +7,7 @@ Get the router running in minutes: Docker or local install, then verify with cur
 ## Prerequisites
 
 - **Docker** (for Option A), or **Python 3.10+** (for Option B)
-- Three secrets: client key, admin key, and an encryption key (min 16 characters) for provider API keys stored in the DB
+- Three secrets: client key, admin key, and an encryption key for provider API keys stored in the DB (see [PERSISTENCE_AND_SECRETS.md](PERSISTENCE_AND_SECRETS.md) for format)
 
 ---
 
@@ -20,7 +20,7 @@ git clone https://github.com/sanctumos/sanctum-router.git
 cd sanctum-router
 ```
 
-Set these before starting the container (use a strong 16+ character encryption key in production):
+Set these before starting the container:
 
 ```bash
 export ROUTER_CLIENT_KEY=your-client-key
@@ -30,7 +30,7 @@ export ROUTER_ENCRYPTION_KEY=your-32-char-encryption-key
 
 ### 2. Start the router
 
-Port `8480` is bound to **127.0.0.1** only (localhost). Data is stored in a Docker volume.
+Router binds to localhost; map ports as `127.0.0.1:8480:8480`. Data is stored in a Docker volume.
 
 ```bash
 docker compose up --build -d

@@ -94,7 +94,7 @@ Sanctum Router is a Dockerized proxy providing an OpenAI-compatible API for agen
 - **Agent control via SMCP:** Router ships **SMCP plugins** (sanctumos/smcp–compatible) for status, override, and routing logic; CLI is wrapped with **UCW** (actuallyrizzn/ucw) so the same surface is exposed as SMCP plugins — no bundled MCP server in the image
 - **CLI utilities** for provider/config and routing logic (priority, failover rules); CLI designed to be UCW-wrapable for SMCP plugin generation
 - **Observability:** health endpoint, config/status via Config API; no request/usage logging to DB in MVP
-- **Local SQLite DB** for routing state and failover conditions
+- **Local SQLite DB** for provider config, routing state, failover conditions, and secrets (encrypted at rest)
 
 ---
 

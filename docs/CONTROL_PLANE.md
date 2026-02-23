@@ -52,6 +52,6 @@ This system is designed for **trusted localhost deployments** (same machine as L
 
 - The Config API and SMCP write tools are **intentionally powerful** (provider CRUD, routing, override). They are considered an **intentional security hole** if exposed publicly.
 - **Default posture:** bind to `127.0.0.1` and avoid public port exposure. Use Docker port mapping `127.0.0.1:8480:8480` so only the host can reach the router.
-- Use Config API and SMCP plugins only in **trusted/local** environments.
+- Use Config API and SMCP plugins only in **trusted/local** environments. A dedicated **SECURITY.md** may be added later for consolidated security and deployment guidance.
 
 See [REFERENCE.md](REFERENCE.md) for session override and env vars.

@@ -1,6 +1,6 @@
 # Sanctum Router
 
-**OpenRouter’s role—but local, extensible, and wired into the agent stack.** A self-hosted, OpenAI-compatible inference proxy that routes agent LLM requests across multiple providers with policy-enforced gating, credit-aware failover, and full control via Config API and SMCP plugins.
+**OpenRouter’s *role*—but local, extensible, and wired into the agent stack.** A self-hosted, OpenAI-compatible inference proxy that routes agent LLM requests across multiple providers with policy-enforced gating, credit-aware failover, and full control via Config API and SMCP plugins.
 
 ---
 
@@ -44,7 +44,7 @@ Phase 1 routing is explicit and rule-based:
 
 - **Capability gating**
   - If the request includes `tools`, route only to providers with `supports_tools=true`
-  - If the request is **multimodal** (images), route only to providers with `supports_multimodal=true`
+  - If the request is **multimodal** (images — detected via OpenAI-style message content items of type `image_url` / `input_image`), route only to providers with `supports_multimodal=true`
   - If `stream: true`, route only to providers with `supports_streaming=true`
 
 - **Health failover**
@@ -100,7 +100,7 @@ Provider API keys are stored **encrypted at rest** in SQLite using `ROUTER_ENCRY
 
 ## Quick start
 
-**Docker:** Set `ROUTER_CLIENT_KEY`, `ROUTER_ADMIN_KEY`, `ROUTER_ENCRYPTION_KEY`, then `docker compose up --build -d`. Port **127.0.0.1:8480**.
+**Docker:** Set `ROUTER_CLIENT_KEY`, `ROUTER_ADMIN_KEY`, `ROUTER_ENCRYPTION_KEY`, then `docker compose up --build -d`. Router binds to localhost; map ports as `127.0.0.1:8480:8480`.
 
 **Local:** `pip install -e .`, set the same env vars and `ROUTER_DB_PATH`, then `uvicorn router.main:app --host 127.0.0.1 --port 8480`.
 
@@ -131,7 +131,7 @@ Comprehensive docs live in **[docs/](docs/)**:
 |----------|-------------|
 | `ROUTER_CLIENT_KEY` | Bearer token for `/v1/*` (proxy API). Required in production. |
 | `ROUTER_ADMIN_KEY` | Bearer or X-API-Key for `/admin/*` (Config API). |
-| `ROUTER_ENCRYPTION_KEY` | Key for encrypting provider API keys in the DB (min 16 chars). |
+| `ROUTER_ENCRYPTION_KEY` | Symmetric key for encrypting provider API keys at rest (format depends on implementation; see [docs](docs/PERSISTENCE_AND_SECRETS.md)). |
 | `ROUTER_DB_PATH` | SQLite path (default: `/data/router.db`). Mount a volume in Docker. |
 | `ROUTER_CONFIG` | Optional path to YAML config file (bootstrap + server.port). |
 | `ROUTER_PORT` | Override server port (default 8480). |
@@ -142,6 +142,8 @@ See [docs/REFERENCE.md](docs/REFERENCE.md) for session override, API summary, an
 ---
 
 ## Session override
+
+**Recommended (MVP):** set `ROUTER_ADMIN_KEY` = `ROUTER_CLIENT_KEY` unless you explicitly need them separated.
 
 Provider override is keyed by **session ID**: either `X-Router-Session-Id` or the hash of the request’s Bearer token. The CLI uses the admin key, so overrides set via the CLI apply to the **admin** session. For proxy clients to see a CLI-set override, they must use the same session: send the same Bearer token (when client and admin keys match) or the same `X-Router-Session-Id` on proxy requests. When admin and client keys differ, proxy clients must send the same session identifier on `/v1/*` requests for CLI-set overrides to apply.
 
