@@ -38,7 +38,7 @@ Phase 1 routing is explicit and rule-based:
 
 - **Capability gating**
   - If the request includes `tools`, route only to providers with `supports_tools=true`
-  - If the request is **multimodal** (images), route only to providers with `supports_multimodal=true`
+  - If the request is **multimodal** (images — detected via OpenAI-style message content items of type `image_url` / `input_image`), route only to providers with `supports_multimodal=true`
   - If `stream: true`, route only to providers with `supports_streaming=true`
 
 - **Health failover**

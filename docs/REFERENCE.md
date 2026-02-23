@@ -10,7 +10,7 @@ Quick reference for environment variables, session override behavior, and proxy 
 |----------|-------------|
 | `ROUTER_CLIENT_KEY` | Bearer token for `/v1/*` (proxy API). Required in production. |
 | `ROUTER_ADMIN_KEY` | Bearer or X-API-Key for `/admin/*` (Config API). |
-| `ROUTER_ENCRYPTION_KEY` | Key for encrypting provider API keys in the DB (min 16 chars). |
+| `ROUTER_ENCRYPTION_KEY` | Symmetric key for encrypting provider API keys at rest (format depends on implementation; see [PERSISTENCE_AND_SECRETS.md](PERSISTENCE_AND_SECRETS.md)). |
 | `ROUTER_DB_PATH` | SQLite path (default: `/data/router.db`). Mount a volume in Docker. |
 | `ROUTER_CONFIG` | Optional path to YAML config file (bootstrap + server.port). |
 | `ROUTER_PORT` | Override server port (default 8480). |
@@ -19,6 +19,8 @@ Quick reference for environment variables, session override behavior, and proxy 
 ---
 
 ## Session override
+
+**Recommended (MVP):** set `ROUTER_ADMIN_KEY` = `ROUTER_CLIENT_KEY` unless you explicitly need them separated.
 
 Provider override is keyed by **session ID**:
 

@@ -14,9 +14,9 @@ Sanctum Router uses a **SQLite database** as the single source of truth for prov
 
 ## Encrypted provider keys
 
-- Provider API keys are stored **encrypted** in the `providers` table. Encryption uses **ROUTER_ENCRYPTION_KEY** from the environment (min 16 characters).
+- Provider API keys are stored **encrypted** in the `providers` table. Encryption uses **ROUTER_ENCRYPTION_KEY** from the environment (format and minimum length depend on implementation; see `router/crypto_utils.py`).
 - Keys are **decrypted only in memory** when the router forwards requests to a provider. No plaintext secrets are written to DB or logs.
-- If you add or update a provider with an `api_key` via the Config API, **ROUTER_ENCRYPTION_KEY** must be set (and at least 16 chars), or the router returns 400. Bootstrap from YAML also requires the encryption key when provider keys are present.
+- If you add or update a provider with an `api_key` via the Config API, **ROUTER_ENCRYPTION_KEY** must be set and valid, or the router returns 400. Bootstrap from YAML also requires the encryption key when provider keys are present.
 
 ---
 
