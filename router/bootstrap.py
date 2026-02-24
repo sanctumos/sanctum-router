@@ -47,6 +47,7 @@ def bootstrap_from_config(config: dict[str, Any]) -> bool:
         credit_threshold = p.get("credit_threshold")
         if credit_threshold is not None:
             credit_threshold = float(credit_threshold)
+        provider_type = (p.get("provider_type") or "openai_compat").strip() or "openai_compat"
         supports_tools = 1 if p.get("supports_tools", True) else 0
         supports_streaming = 1 if p.get("supports_streaming", True) else 0
         supports_multimodal = 1 if p.get("supports_multimodal", False) else 0
@@ -57,6 +58,7 @@ def bootstrap_from_config(config: dict[str, Any]) -> bool:
             models=models_str,
             priority=priority,
             credit_threshold=credit_threshold,
+            provider_type=provider_type,
             supports_tools=supports_tools,
             supports_streaming=supports_streaming,
             supports_multimodal=supports_multimodal,

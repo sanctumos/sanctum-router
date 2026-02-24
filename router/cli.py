@@ -151,8 +151,8 @@ def cmd_credit(json_out: bool) -> None:
     if json_out:
         print(json.dumps(data, indent=2))
     else:
-        for pid, info in data.items():
-            print(pid, "balance=", info.get("balance"), "below_threshold=", info.get("below_threshold", False))
+        for p in data.get("providers", []):
+            print(p.get("id"), "balance=", p.get("balance"), "below_threshold=", p.get("below_threshold", False))
 
 
 def main() -> int:

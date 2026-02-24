@@ -229,7 +229,7 @@ def test_v1_chat_completions_success_with_mocked_adapter(client, client_headers,
         },
     )
     credit_health.set_healthy(pid, True)
-    credit_health.set_credit_state(pid, 100.0, False)
+    credit_health.set_credit_state_legacy(pid, 100.0, False)
     async def fake_chat(provider_id, endpoint, api_key, model_upstream, body, stream):
         return ({"id": "gen-1", "choices": [{"message": {"content": "Hi"}}], "model": "gpt-4"}, 200, {})
 
@@ -261,7 +261,7 @@ def test_v1_embeddings_success_with_mocked_adapter(client, client_headers, admin
         },
     )
     credit_health.set_healthy(pid, True)
-    credit_health.set_credit_state(pid, 100.0, False)
+    credit_health.set_credit_state_legacy(pid, 100.0, False)
     async def fake_emb(provider_id, endpoint, api_key, model_upstream, body):
         return ({"data": [{"embedding": [0.1]}], "model": "text-embedding-3-small"}, 200, {})
 
@@ -293,7 +293,7 @@ def test_v1_chat_completions_streaming_success(client, client_headers, admin_hea
         },
     )
     credit_health.set_healthy(pid, True)
-    credit_health.set_credit_state(pid, 100.0, False)
+    credit_health.set_credit_state_legacy(pid, 100.0, False)
     async def fake_chat_stream(provider_id, endpoint, api_key, model_upstream, body, stream):
         if not stream:
             return ({"choices": []}, 200, {})

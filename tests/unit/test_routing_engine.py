@@ -29,8 +29,8 @@ def two_providers(clean_db_path):
     db.provider_insert("local", "https://local.com", None, '["gpt-4","gpt-3.5"]', 2, supports_tools=0, supports_streaming=1, supports_multimodal=0)
     ch.set_healthy("openai", True)
     ch.set_healthy("local", True)
-    ch.set_credit_state("openai", 100.0, False)
-    ch.set_credit_state("local", 100.0, False)
+    ch.set_credit_state_legacy("openai", 100.0, False)
+    ch.set_credit_state_legacy("local", 100.0, False)
 
 
 def test_resolve_canonical_model_passthrough(clean_db_path):
@@ -68,8 +68,8 @@ def test_filter_available():
     """filter_available excludes unhealthy and below-credit."""
     ch.set_healthy("a", True)
     ch.set_healthy("b", False)
-    ch.set_credit_state("a", 100.0, False)
-    ch.set_credit_state("c", 1.0, True)
+    ch.set_credit_state_legacy("a", 100.0, False)
+    ch.set_credit_state_legacy("c", 1.0, True)
     providers = [{"id": "a"}, {"id": "b"}, {"id": "c"}]
     out = re.filter_available(providers)
     assert [p["id"] for p in out] == ["a"]

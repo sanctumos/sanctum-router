@@ -10,4 +10,5 @@ if __name__ == "__main__":
         host=host,
         port=port,
         reload=False,
+        workers=1,  # credit and health loops are in-process; avoid duplicate loops
     )

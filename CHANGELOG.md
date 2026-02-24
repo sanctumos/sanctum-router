@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (See open issues on the repo for audit and hardening items.)
 
+## [0.1.8] - 2026-02-22
+
+### Added
+
+- **Provider monitor adapters:** `provider_type` in DB and Config API (POST/PATCH/GET `/admin/providers`); registry `venice` and `openai_compat`. Venice monitor uses `VENICE_BILLING_BASE_URL`, fallback order `/billing/balance` → `/billing/summary` → `/billing/usage`; OpenAI-compat returns `supported=False` (no credit). Credit loop uses monitors, last-known-good on errors; GET `/admin/credit` returns per-provider `supported`, `enforceable`, `balance`, `currency`, `below_threshold`, `as_of`, `error`. Health: GET `{endpoint}/models` with optional Bearer auth; 200→healthy, 401/403→unhealthy, 404/405→healthy, 429→unhealthy; shared `httpx.AsyncClient` from lifespan; document `--workers 1` for single-loop. Routing excludes only when `below_threshold` and `enforceable`. Bootstrap and tests for monitors, credit loop, and health semantics.
+
 ## [0.1.7] - 2026-02-23
 
 ### Changed

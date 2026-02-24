@@ -6,10 +6,10 @@ from router import credit_health as ch
 
 def test_credit_and_health_state():
     """get/set credit and health state."""
-    ch.set_credit_state("p1", 100.0, False)
+    ch.set_credit_state_legacy("p1", 100.0, False)
     assert ch.get_credit_balance("p1") == 100.0
     assert ch.is_below_credit_threshold("p1") is False
-    ch.set_credit_state("p1", 5.0, True)
+    ch.set_credit_state_legacy("p1", 5.0, True)
     assert ch.get_credit_balance("p1") == 5.0
     assert ch.is_below_credit_threshold("p1") is True
 
@@ -25,13 +25,15 @@ def test_healthy_default_true():
 
 
 def test_get_all_credit_state():
-    """get_all_credit_state returns dict with balance, currency, below_threshold."""
-    ch.set_credit_state("p2", 50.0, False)
+    """get_all_credit_state returns dict with balance, currency, below_threshold, supported, as_of."""
+    ch.set_credit_state_legacy("p2", 50.0, False)
     all_ = ch.get_all_credit_state()
     assert "p2" in all_
     assert all_["p2"]["balance"] == 50.0
     assert all_["p2"]["currency"] == "USD"
     assert all_["p2"]["below_threshold"] is False
+    assert "supported" in all_["p2"]
+    assert "as_of" in all_["p2"]
 
 
 def test_get_all_health():
@@ -41,8 +43,7 @@ def test_get_all_health():
     assert all_.get("p3") is False
 
 
-def test_register_credit_fetcher():
-    """register_credit_fetcher stores fetcher (no-op call)."""
+def test_register_credit_fetcher_deprecated():
+    """register_credit_fetcher is deprecated no-op; credit uses monitor registry."""
     ch.register_credit_fetcher("p4", lambda pid: __import__("asyncio").coroutine(lambda: 99.0)())
-    # Fetchers are used in run_credit_loop; just ensure no error
     assert True

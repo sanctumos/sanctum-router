@@ -102,7 +102,7 @@ Provider API keys are stored **encrypted at rest** in SQLite using `ROUTER_ENCRY
 
 **Docker:** Set `ROUTER_CLIENT_KEY`, `ROUTER_ADMIN_KEY`, `ROUTER_ENCRYPTION_KEY`, then `docker compose up --build -d`. Router binds to localhost; map ports as `127.0.0.1:8480:8480`.
 
-**Local:** `pip install -e .`, set the same env vars and `ROUTER_DB_PATH`, then `uvicorn router.main:app --host 127.0.0.1 --port 8480`.
+**Local:** `pip install -e .`, set the same env vars and `ROUTER_DB_PATH`, then `uvicorn router.main:app --host 127.0.0.1 --port 8480`. Use **`--workers 1`** so credit and health background loops are not duplicated (e.g. `uvicorn router.main:app --workers 1 ...`).
 
 **Full guide (curl, CLI, first provider):** [docs/QUICKSTART.md](docs/QUICKSTART.md).
 

@@ -51,6 +51,7 @@ async def list_providers():
         out.append({
             "id": pid,
             "endpoint": p["endpoint"],
+            "provider_type": p.get("provider_type", "openai_compat"),
             "models": p["models"] if isinstance(p["models"], str) else json.dumps(p.get("models") or []),
             "priority": p["priority"],
             "credit_threshold": p.get("credit_threshold"),
@@ -68,6 +69,7 @@ class ProviderCreate(BaseModel):
     models: list[str] | str
     priority: int = 1
     credit_threshold: Optional[float] = None
+    provider_type: Optional[str] = None
     supports_tools: bool = True
     supports_streaming: bool = True
     supports_multimodal: bool = False
@@ -91,6 +93,7 @@ async def create_provider(p: ProviderCreate):
         models=models_str,
         priority=p.priority,
         credit_threshold=p.credit_threshold,
+        provider_type=p.provider_type if (p.provider_type and str(p.provider_type).strip()) else None,
         supports_tools=1 if p.supports_tools else 0,
         supports_streaming=1 if p.supports_streaming else 0,
         supports_multimodal=1 if p.supports_multimodal else 0,
@@ -100,6 +103,7 @@ async def create_provider(p: ProviderCreate):
     provider = {
         "id": p.id,
         "endpoint": p.endpoint,
+        "provider_type": p.provider_type or "openai_compat",
         "models": models_str,
         "priority": p.priority,
         "credit_threshold": p.credit_threshold,
@@ -116,6 +120,7 @@ class ProviderPatch(BaseModel):
     models: Optional[list[str] | str] = None
     priority: Optional[int] = None
     credit_threshold: Optional[float] = None
+    provider_type: Optional[str] = None
     supports_tools: Optional[bool] = None
     supports_streaming: Optional[bool] = None
     supports_multimodal: Optional[bool] = None
@@ -136,6 +141,8 @@ async def update_provider(provider_id: str, p: ProviderPatch):
         kwargs["priority"] = p.priority
     if p.credit_threshold is not None:
         kwargs["credit_threshold"] = p.credit_threshold
+    if p.provider_type is not None:
+        kwargs["provider_type"] = p.provider_type.strip() or None
     if p.supports_tools is not None:
         kwargs["supports_tools"] = 1 if p.supports_tools else 0
     if p.supports_streaming is not None:
@@ -167,8 +174,14 @@ async def delete_provider(provider_id: str):
 
 @router.get("/credit")
 async def get_credit():
-    """GET /admin/credit — from in-memory credit state; unknown when unavailable."""
-    return get_all_credit_state()
+    """GET /admin/credit — per-provider supported, enforceable, balance, currency, below_threshold, as_of, error. Never raw."""
+    state = get_all_credit_state()
+    return {
+        "providers": [
+            {"id": pid, **s}
+            for pid, s in state.items()
+        ]
+    }
 
 
 class OverrideBody(BaseModel):

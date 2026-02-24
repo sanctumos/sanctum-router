@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS providers (
   id TEXT PRIMARY KEY,
   endpoint TEXT NOT NULL,
   api_key_encrypted BLOB,
+  provider_type TEXT,
   models TEXT NOT NULL,
   priority INTEGER NOT NULL,
   credit_threshold REAL,
@@ -83,6 +84,14 @@ def ensure_db_dir() -> None:
         dirpath.mkdir(parents=True, exist_ok=True)
 
 
+def _migrate_provider_type(conn: sqlite3.Connection) -> None:
+    """If providers table exists but provider_type column is missing, add it (existing rows get NULL)."""
+    cursor = conn.execute("PRAGMA table_info(providers)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if "provider_type" not in columns:
+        conn.execute("ALTER TABLE providers ADD COLUMN provider_type TEXT")
+
+
 def init_db(db_path: Optional[str] = None) -> None:
     """Create DB and schema if not present. Idempotent. Set WAL + synchronous=NORMAL."""
     path = db_path or get_db_path()
@@ -91,6 +100,7 @@ def init_db(db_path: Optional[str] = None) -> None:
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA synchronous=NORMAL;")
     conn.executescript(SCHEMA_SQL)
+    _migrate_provider_type(conn)
     conn.commit()
     conn.close()
 
@@ -104,10 +114,17 @@ def _get_conn():
 
 # --- Providers ---
 
+def _normalize_provider_type(raw: Any) -> str:
+    """Treat NULL or empty provider_type as openai_compat."""
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return "openai_compat"
+    return str(raw).strip()
+
+
 def provider_list() -> list[dict[str, Any]]:
     with _get_conn() as c:
         rows = c.execute(
-            "SELECT id, endpoint, api_key_encrypted, models, priority, credit_threshold, "
+            "SELECT id, endpoint, api_key_encrypted, provider_type, models, priority, credit_threshold, "
             "supports_tools, supports_streaming, supports_multimodal, healthy, updated_at FROM providers"
         ).fetchall()
         return [
@@ -115,6 +132,7 @@ def provider_list() -> list[dict[str, Any]]:
                 "id": r["id"],
                 "endpoint": r["endpoint"],
                 "api_key_encrypted": r["api_key_encrypted"],
+                "provider_type": _normalize_provider_type(r["provider_type"]),
                 "models": r["models"] if isinstance(r["models"], str) else json.dumps(r["models"]),
                 "priority": r["priority"],
                 "credit_threshold": r["credit_threshold"],
@@ -131,7 +149,7 @@ def provider_list() -> list[dict[str, Any]]:
 def provider_get(provider_id: str) -> Optional[dict[str, Any]]:
     with _get_conn() as c:
         r = c.execute(
-            "SELECT id, endpoint, api_key_encrypted, models, priority, credit_threshold, "
+            "SELECT id, endpoint, api_key_encrypted, provider_type, models, priority, credit_threshold, "
             "supports_tools, supports_streaming, supports_multimodal, healthy, updated_at FROM providers WHERE id = ?",
             (provider_id,),
         ).fetchone()
@@ -141,6 +159,7 @@ def provider_get(provider_id: str) -> Optional[dict[str, Any]]:
             "id": r["id"],
             "endpoint": r["endpoint"],
             "api_key_encrypted": r["api_key_encrypted"],
+            "provider_type": _normalize_provider_type(r["provider_type"]),
             "models": r["models"] if isinstance(r["models"], str) else json.dumps(r["models"]),
             "priority": r["priority"],
             "credit_threshold": r["credit_threshold"],
@@ -159,6 +178,7 @@ def provider_insert(
     models: str,
     priority: int,
     credit_threshold: Optional[float] = None,
+    provider_type: Optional[str] = None,
     supports_tools: int = 1,
     supports_streaming: int = 1,
     supports_multimodal: int = 0,
@@ -166,10 +186,10 @@ def provider_insert(
     models_str = models if isinstance(models, str) else json.dumps(models)
     with _get_conn() as c:
         c.execute(
-            """INSERT INTO providers (id, endpoint, api_key_encrypted, models, priority, credit_threshold,
+            """INSERT INTO providers (id, endpoint, api_key_encrypted, provider_type, models, priority, credit_threshold,
             supports_tools, supports_streaming, supports_multimodal, healthy, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))""",
-            (id, endpoint, api_key_encrypted, models_str, priority, credit_threshold,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))""",
+            (id, endpoint, api_key_encrypted, provider_type if provider_type and provider_type.strip() else None, models_str, priority, credit_threshold,
              supports_tools, supports_streaming, supports_multimodal),
         )
 
@@ -179,6 +199,7 @@ def provider_update(
     *,
     endpoint: Optional[str] = None,
     api_key_encrypted: Optional[bytes] = None,
+    provider_type: Optional[str] = None,
     models: Optional[str] = None,
     priority: Optional[int] = None,
     credit_threshold: Optional[float] = None,
@@ -196,6 +217,9 @@ def provider_update(
     if api_key_encrypted is not None:
         updates.append("api_key_encrypted = ?")
         args.append(api_key_encrypted)
+    if provider_type is not None:
+        updates.append("provider_type = ?")
+        args.append(provider_type if provider_type.strip() else None)
     if models is not None:
         updates.append("models = ?")
         args.append(models if isinstance(models, str) else json.dumps(models))
